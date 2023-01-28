@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	pn "github.com/pusher/push-notifications-go"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	"misGastos3Backend/database"
 	"misGastos3Backend/domain"
@@ -10,9 +12,16 @@ import (
 )
 
 var db *gorm.DB
+var beamsClient pn.PushNotifications
 
 func main() {
 
+	viper.SetConfigFile(".env")
+	err := viper.ReadInConfig()
+	beamsClient, _ = pn.New(viper.GetString("INSTANCE_ID"), viper.GetString("SECRET_KEY"))
+	if err != nil {
+		return
+	}
 	server := gin.Default()
 	db, _ = database.GetDb()
 
@@ -29,7 +38,7 @@ func main() {
 			return
 		}
 		data, _ := database.GetProducts(db)
-
+		sendMessage("Nuevo producto", fmt.Sprintf("Se ha agregado un nuevo producto: %v, %v$", product.Name, product.Price))
 		c.JSON(200, data)
 	})
 
@@ -52,10 +61,26 @@ func main() {
 		if err != nil {
 			return
 		}
+		sendMessage("Producto eliminado", "Se ha eliminado un producto")
 		c.JSON(200, "Deleted")
 	})
 
-	err := server.Run()
+	err = server.Run()
+	if err != nil {
+		return
+	}
+}
+
+func sendMessage(title, body string) {
+	publishRequest := map[string]interface{}{
+		"fcm": map[string]interface{}{
+			"notification": map[string]interface{}{
+				"title": title,
+				"body":  body,
+			},
+		},
+	}
+	_, err := beamsClient.PublishToInterests([]string{"familia"}, publishRequest)
 	if err != nil {
 		return
 	}

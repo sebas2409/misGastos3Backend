@@ -2,7 +2,7 @@ POST localhost:8080/save
 content-type: application/json
 
 {
-    "date": "febrero 2023",
-    "name": "Compra",
+    "date": "Febrero 2023",
+    "name": "Demo2",
     "price": 200.4
 }
